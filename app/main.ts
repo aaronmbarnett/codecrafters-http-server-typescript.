@@ -41,10 +41,9 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
     if (endpoint === '/') {
         socket.write(Buffer.from('HTTP/1.1 200 OK\r\n\r\n'));
     } else if (pathMatches(/\/echo\/[a-zA-Z0-9]*/, endpoint)) {
-        const str = extractEndpoint(endpoint);
-        socket.write(Buffer.from(buildHttpResponse(200, 'text/plain', str)));
+        handleEchoRequest(request, socket);
     } else if (pathMatches(/\/user-agent/, endpoint)) {
-        socket.write(Buffer.from(buildHttpResponse(200, 'text/plain', userAgent)));
+        socket.write(Buffer.from(buildHttpResponse(200, userAgent, { 'Content-Type': 'text/plain' })));
     } else if (pathMatches(/\/files\/[a-zA-Z0-9]*/, endpoint)) {
         const filesEndpoint = endpoint as TempFilePath;
         const [_, fileName] = filesEndpoint.split('/files/');
@@ -54,7 +53,11 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
                 if (error) {
                     socket.write(Buffer.from('HTTP/1.1 404 Not Found\r\n\r\n'));
                 } else {
-                    socket.write(Buffer.from(buildHttpResponse(200, 'application/octet-stream', content.toString())));
+                    socket.write(
+                        Buffer.from(
+                            buildHttpResponse(200, content.toString(), { 'Content-Type': 'application/octet-stream' })
+                        )
+                    );
                 }
             });
         } else {
@@ -62,6 +65,22 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
         }
     } else {
         socket.write(Buffer.from('HTTP/1.1 404 Not Found\r\n\r\n'));
+    }
+}
+
+function handleEchoRequest(request: HttpRequestData, socket: net.Socket) {
+    const { endpoint, acceptEncoding } = request;
+    const str = extractEndpoint(endpoint);
+    if (acceptEncoding.includes('gzip')) {
+        socket.write(
+            Buffer.from(
+                buildHttpResponse(200, str, {
+                    'Content-Encoding': 'gzip',
+                })
+            )
+        );
+    } else {
+        socket.write(Buffer.from(buildHttpResponse(200, str, {})));
     }
 }
 

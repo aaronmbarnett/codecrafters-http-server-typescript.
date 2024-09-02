@@ -7,6 +7,7 @@ export interface HttpRequestData {
     host: string;
     userAgent: string;
     accept: string;
+    acceptEncoding: string[];
     body: string;
 }
 
@@ -16,17 +17,29 @@ export function pathMatches(regex: RegExp, path: string) {
     return regex.test(path);
 }
 
-export function buildHttpResponse(statusCode: number, contentType: string, body: string): string {
-    // HTTP status message based on status code
+export function buildHttpResponse(statusCode: number, body: string, headers: { [key: string]: string }): string {
+    // Default headers (can be overridden by user-specified headers)
+    const defaultHeaders: { [key: string]: string } = {
+        'Content-Type': 'text/plain',
+        'Content-Length': Buffer.byteLength(body).toString(),
+    };
+
+    // Combine default headers with user-specified headers
+    const combinedHeaders = { ...defaultHeaders, ...headers };
+
+    // Build the response status line
     const statusMessage = getStatusMessage(statusCode);
+    const responseLine = `HTTP/1.1 ${statusCode} ${statusMessage}`;
 
-    // Building the response header
-    const responseHeader = `HTTP/1.1 ${statusCode} ${statusMessage}\r\nContent-Type: ${contentType}\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n`;
+    // Build the header lines
+    const headerLines = Object.entries(combinedHeaders)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\r\n');
 
-    // Concatenating header and body to form the full response
-    const responseMessage = responseHeader + body;
+    // Combine the response line, headers, and body into the final response
+    const response = `${responseLine}\r\n${headerLines}\r\n\r\n${body}`;
 
-    return responseMessage;
+    return response;
 }
 
 // Helper function to get status message based on code
@@ -41,7 +54,6 @@ function getStatusMessage(statusCode: number): string {
         500: 'Internal Server Error',
         502: 'Bad Gateway',
         503: 'Service Unavailable',
-        // Add more status codes and messages as needed
     };
 
     return statusMessages[statusCode] || 'Unknown Status';
@@ -78,6 +90,9 @@ export function parseHttpRequest(request: string): HttpRequestData {
             }
         }
     }
+    const acceptEncoding = headers['accept-encoding']
+        ? headers['accept-encoding'].split(',').map((enc) => enc.trim())
+        : [];
 
     return {
         method,
@@ -86,6 +101,7 @@ export function parseHttpRequest(request: string): HttpRequestData {
         host: headers['host'] || '',
         userAgent: headers['user-agent'] || '',
         accept: headers['accept'] || '',
+        acceptEncoding,
         body,
     };
 }
