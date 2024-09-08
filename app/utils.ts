@@ -10,18 +10,33 @@ export interface HttpRequestData {
     acceptEncoding: string[];
     body: string;
 }
-
 export const PATH_REGEX = /\/echo\/[a-zA-Z0-9]*/;
 
 export function pathMatches(regex: RegExp, path: string) {
     return regex.test(path);
 }
 
-export function buildHttpResponse(statusCode: number, body: string, headers: { [key: string]: string }): string {
+type Body = { _type: 'encrypted'; content: Buffer } | { _type: 'unencrypted'; content: string };
+export function buildHttpResponse(statusCode: number, body: Body, headers: { [key: string]: string }): string {
+    let bodyString: string;
+    let contentLength: string;
+    switch (body._type) {
+        case 'unencrypted':
+            contentLength = body.content.length.toString();
+            bodyString = body.content;
+            break;
+        case 'encrypted':
+            contentLength = body.content.length.toString();
+            bodyString = '';
+            break;
+    }
+
+    console.log('bodyString: ', bodyString);
+    console.log(contentLength);
     // Default headers (can be overridden by user-specified headers)
     const defaultHeaders: { [key: string]: string } = {
         'Content-Type': 'text/plain',
-        'Content-Length': Buffer.byteLength(body).toString(),
+        'Content-Length': contentLength,
     };
 
     // Combine default headers with user-specified headers
@@ -37,7 +52,7 @@ export function buildHttpResponse(statusCode: number, body: string, headers: { [
         .join('\r\n');
 
     // Combine the response line, headers, and body into the final response
-    const response = `${responseLine}\r\n${headerLines}\r\n\r\n${body}`;
+    const response = `${responseLine}\r\n${headerLines}\r\n\r\n${bodyString}`;
 
     return response;
 }

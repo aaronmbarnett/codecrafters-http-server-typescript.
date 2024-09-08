@@ -6,6 +6,11 @@
         "esModuleInterop": true,
         "strict": true,
         "skipLibCheck": true,
+        "strictNullChecks": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "strictFunctionTypes": true
     },
     "ts-node": {
         "esm": true

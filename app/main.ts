@@ -1,4 +1,5 @@
 import * as net from 'net';
+import * as zlib from 'zlib';
 import fs from 'fs';
 import * as process from 'process';
 import {
@@ -43,7 +44,11 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
     } else if (pathMatches(/\/echo\/[a-zA-Z0-9]*/, endpoint)) {
         handleEchoRequest(request, socket);
     } else if (pathMatches(/\/user-agent/, endpoint)) {
-        socket.write(Buffer.from(buildHttpResponse(200, userAgent, { 'Content-Type': 'text/plain' })));
+        socket.write(
+            Buffer.from(
+                buildHttpResponse(200, { _type: 'unencrypted', content: userAgent }, { 'Content-Type': 'text/plain' })
+            )
+        );
     } else if (pathMatches(/\/files\/[a-zA-Z0-9]*/, endpoint)) {
         const filesEndpoint = endpoint as TempFilePath;
         const [_, fileName] = filesEndpoint.split('/files/');
@@ -55,7 +60,13 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
                 } else {
                     socket.write(
                         Buffer.from(
-                            buildHttpResponse(200, content.toString(), { 'Content-Type': 'application/octet-stream' })
+                            buildHttpResponse(
+                                200,
+                                { _type: 'unencrypted', content: content.toString() },
+                                {
+                                    'Content-Type': 'application/octet-stream',
+                                }
+                            )
                         )
                     );
                 }
@@ -70,17 +81,24 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
 
 function handleEchoRequest(request: HttpRequestData, socket: net.Socket) {
     const { endpoint, acceptEncoding } = request;
-    const str = extractEndpoint(endpoint);
+    const body = extractEndpoint(endpoint);
+    console.log('body inside handleEchoRequest', body);
     if (acceptEncoding.includes('gzip')) {
+        const compressedBuffer = zlib.gzipSync(body);
         socket.write(
             Buffer.from(
-                buildHttpResponse(200, str, {
-                    'Content-Encoding': 'gzip',
-                })
+                buildHttpResponse(
+                    200,
+                    { _type: 'encrypted', content: compressedBuffer },
+                    {
+                        'Content-Encoding': 'gzip',
+                    }
+                )
             )
         );
+        socket.write(compressedBuffer);
     } else {
-        socket.write(Buffer.from(buildHttpResponse(200, str, {})));
+        socket.write(Buffer.from(buildHttpResponse(200, { _type: 'unencrypted', content: body }, {})));
     }
 }
 
