@@ -82,7 +82,6 @@ function handleGetRequest(request: HttpRequestData, socket: net.Socket): void {
 function handleEchoRequest(request: HttpRequestData, socket: net.Socket) {
     const { endpoint, acceptEncoding } = request;
     const body = extractEndpoint(endpoint);
-    console.log('body inside handleEchoRequest', body);
     if (acceptEncoding.includes('gzip')) {
         const compressedBuffer = zlib.gzipSync(body);
         socket.write(

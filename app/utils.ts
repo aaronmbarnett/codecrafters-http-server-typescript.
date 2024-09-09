@@ -17,6 +17,7 @@ export function pathMatches(regex: RegExp, path: string) {
 }
 
 type Body = { _type: 'encrypted'; content: Buffer } | { _type: 'unencrypted'; content: string };
+
 export function buildHttpResponse(statusCode: number, body: Body, headers: { [key: string]: string }): string {
     let bodyString: string;
     let contentLength: string;
@@ -31,8 +32,6 @@ export function buildHttpResponse(statusCode: number, body: Body, headers: { [ke
             break;
     }
 
-    console.log('bodyString: ', bodyString);
-    console.log(contentLength);
     // Default headers (can be overridden by user-specified headers)
     const defaultHeaders: { [key: string]: string } = {
         'Content-Type': 'text/plain',
